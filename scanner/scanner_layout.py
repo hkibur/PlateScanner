@@ -1,4 +1,5 @@
 import time
+import re
 
 PAD_LABEL = "_PAD"
 META_LABEL = "meta"
@@ -33,12 +34,7 @@ class PacketLayoutContext(object):
         for layout_name, layout in self.layouts.iteritems(): 
             self.layout_byte_lens[layout_name] = self.resolve_layout_length_with_pad(layout)
 
-    def get_layout_from_frame_type(self, frame_type):
-        name = self.frame_type_lookup[frame_type]
-        return (self.layouts[name], self.layout_byte_lens[name])
-
-    def parse_config_line(self, line):
-        token_list = line.split(" ")[1:]
+    def parse_config_line(self, token_list):
         layout = []
         for i in xrange(0, len(token_list), 2):
             layout.append((token_list[i], int(token_list[i + 1])))
@@ -50,12 +46,32 @@ class PacketLayoutContext(object):
         with open(path, "r") as fd:
             for line in fd:
                 line = line.strip()
+                print line
+                if line.startswith("#"):
+                    continue
                 if line.startswith(META_LABEL):
                     self.meta_layout = self.parse_config_line(line)
                     continue
-                layout_name = line[:line.index(" ")]
-                self.layouts[layout_name] = self.parse_config_line(line)
+                layout_arr = re.split("\s+", line)
+                layout_name = layout_arr[0]
+                self.frame_type_lookup[int(layout_arr[1])] = layout_name
+                self.layouts[layout_name] = self.parse_config_line(layout_arr[2:])
         self.resolve_lengths_with_pad()
+
+    def get_bytes(self, layout_name, layout_dict, meta_dict):
+        dest = bytearray(self.meta_byte_len + self.layout_byte_lens[layout_name])
+        meta_view = memoryview(dest[:self.meta_byte_len])
+        content_view = memoryview(dest[self.meta_byte_len:])
+        serialize_packet_dict(meta_view, self.meta_layout, meta_dict)
+        serialize_packet_dict(content_view, self.layouts[layout_name], layout_dict)
+        return dest
+
+    def from_frame(self, frame_type):
+        lname = self.frame_type_lookup[frame_type]
+        return lname, self.layout_byte_lens[lname]
+
+    def get_dict(self, lname, raw):
+        return packet_to_dict(raw, self.layouts[lname])
 
 def packet_to_dict(raw, layout):
     packet_dict = {}
