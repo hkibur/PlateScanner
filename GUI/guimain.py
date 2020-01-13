@@ -3,6 +3,8 @@ import ttk
 
 import scanner
 
+import guimicro
+
 dcb_width = 4 * 2
 
 class ScannerGui(object):
@@ -17,6 +19,8 @@ class ScannerGui(object):
 
         image_frame = tk.LabelFrame(self.root, text = "Microscope View")
         image_frame.grid(row = 0, column = 0, sticky = tk.NSEW)
+
+        guimicro.ScopeFrame(image_frame).pack(fill = tk.BOTH)
 
         control_frame = tk.LabelFrame(self.root, text = "Scanner Control")
         control_frame.grid(row = 0, column = 1, sticky = tk.NSEW)
