@@ -1,14 +1,26 @@
 import sys
-import os
+from PyQt5 import QtWidgets as qt_widget
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path + "/scanner")
-sys.path.append(dir_path + "/GUI")
+import main_gui
+import scanner_control
+import connection_gui_control as cgc
+import move_gui_control as mgc
+import micro_gui_control as migc
+import scanner_gui_control as sgc
 
-import scanner
-import guimain
+gui_app = qt_widget.QApplication([])
+gui_main_widget = qt_widget.QMainWindow()
+gui_main_window = main_gui.Ui_main_window()
+gui_main_window.setupUi(gui_main_widget)
 
-main_scanner = scanner.Scanner()
-main_scanner.bind_port(raw_input("Port: "))
+scanner_control = scanner_control.ScannerControl()
 
-scanner_gui = guimain.ScannerGui(main_scanner, "Plate Scanner")
+cgc.ConnectionGuiControl(gui_main_window, scanner_control)
+mgc.MovementGuiControl(gui_main_window, scanner_control)
+migc.MicroGuiControl(gui_main_window, scanner_control)
+a = sgc.ScannerGuiControl(gui_main_window, scanner_control)
+
+scanner_control.cron.start()
+gui_main_widget.show()
+gui_app.exec_()
+scanner_control.close()
