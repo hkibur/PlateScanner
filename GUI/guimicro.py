@@ -9,6 +9,7 @@ RES_SETTING_SWEEP_STEP_WIDTH = 150
 
 MD200_RES_SETTING = (
 #   (width, height, fps)
+    (640, 480, 20),
     (800, 600, 20),
     (1280, 960, 7.5),
     (1280, 1024, 7.5),
@@ -25,12 +26,10 @@ TEST_WEBCAM_RES_SETTING = (
 )
 
 class ScopeFrame(tk.Frame):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, micro_obj, **kwargs):
         tk.Frame.__init__(self, parent, **kwargs)
 
-        self.res_setts = TEST_WEBCAM_RES_SETTING
-        self.cam = None
-        self.cur_frame = None
+        self.micro = micro_obj
         
         self.rowconfigure(0, weight = 1)
 
@@ -60,34 +59,21 @@ class ScopeFrame(tk.Frame):
 
     def select_res(self, *args, **kwargs):
         index = self.res_combo.current()
-        self.reset_camera()
-        self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.res_setts[index][0])
-        self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.res_setts[index][1])
-        self.cam.set(cv2.CAP_PROP_FPS, self.res_setts[index][2])
-        self.status_write("Opened camera at res setting %dx%d, %.2f fps" % (self.res_setts[index][0], self.res_setts[index][1], self.res_setts[index][2]))
-
-    def reset_camera(self):
-        if self.cam is not None:
-            self.cam.release()
-        try:
-            self.cam = cv2.VideoCapture(0)
-        except Exception as e:
-            self.error_write("Can't bind camera: %s" % (e.message))
-        if not self.cam.isOpened():
-            self.error_write("Camera not opened!")
+        self.micro.select_res(index)
+        self.status_write("Opened camera at res setting %dx%d, %.2f fps" % (self.micro.res_setts[index][0],
+                                                                            self.micro.res_setts[index][1],
+                                                                            self.micro.res_setts[index][2]))
 
     def bind_camera(self):
-        self.reset_camera()
-
-        # self.sweep_res_settings(1920, 1080)
+        # self.sweep_res_settings(3840, 2160)
 
         combo_list = []
-        for width, height, fps in self.res_setts:
+        for width, height, fps in self.micro.res_setts:
             combo_list.append("%dx%d, %.2f fps" % (width, height, fps))
         self.res_combo.config(values = combo_list)
 
         self.res_combo.current(0)
-        self.select_res(0)
+        self.select_res()
 
     def sweep_res_settings(self, max_width, max_height):
         self.cam.release()
@@ -104,20 +90,14 @@ class ScopeFrame(tk.Frame):
             img = ImageTk.PhotoImage(Image.fromarray(frame))
             print img.width(), img.height()
             self.cam.release()
-            time.sleep(1)
-
-    def get_frame(self):
-        if self.cam is None:
-            self.error_write("Can't capture frame, camera not bound!")
-            return
-        stat, frame = self.cam.read()
-        if not stat:
-            self.error_write("Frame caputure not successful!")
-            return
-        return frame
 
     def draw_frame(self):
-        frame = self.get_frame()
+        if not self.micro.get_frame():
+            self.error_write("Frame caputure not successful!")
+        frame = self.micro.cur_frame
+        if frame is None:
+            self.error_write("Frame is None??")
+            return
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.cur_frame = ImageTk.PhotoImage(Image.fromarray(rgb_frame))
         self.image_canvas.delete("all")
@@ -126,7 +106,7 @@ class ScopeFrame(tk.Frame):
         self.status_write("Frame captured %dx%d" % (self.cur_frame.width(), self.cur_frame.height()))
 
     def destroy(self):
-        if self.cam is not None:
+        if self.micro.cam is not None:
             print "release"
-            self.cam.release()
+            self.micro.cam.release()
         tk.Frame.destroy(self)
