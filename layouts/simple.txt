@@ -1,4 +1,0 @@
-# Minimum of 1 byte per field to make it easier to decode
-
-step_packet 0 x_amt 8 y_amt 8
-step_packet_ack 1
